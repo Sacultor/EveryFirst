@@ -6,3 +6,6 @@
 - Solidity
 - Foundry
 
+# 启动方式
+cd fdapp
+npm start
