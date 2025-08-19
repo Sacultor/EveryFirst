@@ -5,7 +5,6 @@
 ### 记录你人生中每一个“第一次”的 Web3 DApp
 
 <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
-<img src="https://img.shields.io/badge/Next.js-000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
 <img src="https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white" />
 <img src="https://img.shields.io/badge/Ethers.js-4E5EE4?style=for-the-badge&logo=ethereum&logoColor=white" />
 
@@ -44,15 +43,14 @@
 ## 🛠️ 技术栈
 
 - **React**
-- **Next.js**
+- **vite**
 - **Solidity**
 - **Ethers.js**
-- （可选）数据库/本地缓存（Demo 阶段可先用缓存）
 
 ---
 
 <div align="center">
-	<b>让 EveryFirst 见证你人生的每一个高光时刻！</b>
+	<b>让 EveryFirst 见证你人生的每一个高光时刻！打造属于自己的数字博物馆</b>
 </div>
 
 ---
