@@ -1,5 +1,7 @@
 # EveryFirst 便条 + 小日历 NFT 项目实施方案（v0.1）
 
+
+
 本方案基于仓库现状（`front` 前端、`smart_contract` 合约目录已存在，技术栈 React + Vite + TypeScript + Ethers.js + Solidity），目标是实现「像便利贴的便签板 + 右侧小日历」的记录与上链铸造 NFT 的 DApp。UI 可参照 `front/pictures/uidesign.jpg`。
 
 ---
