@@ -26,6 +26,21 @@ body {
 	padding: 24px 16px;
 }
 
+.hero {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 240px;
+	margin-bottom: 16px;
+}
+.pixel-logo {
+	font-family: 'Press Start 2P', system-ui, -apple-system, sans-serif;
+	letter-spacing: 2px;
+	color: var(--primary-600);
+	text-shadow: 2px 2px 0 rgba(0,0,0,0.08), 4px 4px 0 rgba(255,122,162,0.25);
+	font-size: 28px;
+}
+
 .layout {
 	display: grid;
 	grid-template-columns: 1fr 320px;

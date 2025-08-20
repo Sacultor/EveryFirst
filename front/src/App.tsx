@@ -6,6 +6,9 @@ const App = () => {
 
   return (
     <div className="container">
+      <div className="hero">
+        <div className="pixel-logo">EVERYFIRST</div>
+      </div>
       <div className="card navbar" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,246,250,0.9))' }}>
         <Navbar onAdd={() => setEditorOpen(true)} />
       </div>
