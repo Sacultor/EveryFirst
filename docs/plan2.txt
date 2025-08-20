@@ -1,0 +1,190 @@
+# EveryFirst 便条 + 小日历 NFT 项目实施方案（v0.1）
+
+本方案基于仓库现状（`front` 前端、`smart_contract` 合约目录已存在，技术栈 React + Vite + TypeScript + Ethers.js + Solidity），目标是实现「像便利贴的便签板 + 右侧小日历」的记录与上链铸造 NFT 的 DApp。UI 可参照 `front/pictures/uidesign.jpg`。
+
+---
+
+## 1. 产品定位与用户体验
+
+- **定位**: 记录人生「每一个第一次」的情感便签，并可选择上链铸造成 NFT；小日历用于回顾与提醒。
+- **核心价值**: 情感资产化（NFT）+ 时间维度回顾（Calendar）+ 轻松发布（便签板）。
+- **使用流程**:
+  1) 连接钱包 → 2) 在首页便签板点击「+」创建便条 → 3) 填写标题/内容/日期/心情/位置/标签，上传图片 → 4) 可设置提醒日期 → 5) 先保存为草稿或直接「生成元数据并铸造 NFT」。
+  6) 成功后便签出现在便签板与小日历中，对应日期高亮；可分享链接。
+
+---
+
+## 2. 关键功能清单
+
+- **钱包连接**: MetaMask/Rainbow → Ethers.js（与现仓库一致）。
+- **便签板（Masonry/Grid）**: 卡片展示标题、日期、心情、缩略图；支持筛选（标签、月份）。
+- **小日历组件**: 右侧固定小日历；显示当月有记录的日期点；点击筛选当天便签。
+- **便条编辑器**: 弹窗表单（标题、内容、日期、地点、心情、标签、图片上传、是否提醒）。
+- **文件与元数据存储**: 图片/IPFS、元数据 JSON/IPFS；返回 `ipfs://...` 的 `tokenURI`。
+- **NFT 铸造**: ERC-721，最小化链上存储（仅 `tokenURI` + 可选 `metadataDigest`）。
+- **提醒**: MVP 支持浏览器本地通知（Service Worker + Push 或日历 ICS 导出）；进阶版支持后端定时任务推送邮件/Telegram/Discord。
+- **个人主页**: 展示我的便签与已铸造 NFT；支持下载元数据/图片。
+- **分享与社交**: 生成分享卡片（Open Graph）与复制链接。
+
+---
+
+## 3. 系统架构与数据流
+
+- 前端 (React/Vite/TS/Ethers.js/Zustand) ↔ 后端 (Node.js/Express) ↔ IPFS (Pinata 或 web3.storage)
+- 前端向后端上传图片与草稿 → 后端固定（Pin）到 IPFS，生成元数据 JSON → 返回 `tokenURI` → 前端调用合约 `mint` → 铸造完成 → 事件回传/索引 → 前端刷新展示。
+
+---
+
+## 4. 前端方案（`front/`）
+
+- **技术**: React + Vite + TypeScript；样式可用 TailwindCSS 或保持现有 CSS；状态管理用 Zustand；请求用 Axios；钱包用 Ethers.js（如需更佳体验可加 RainbowKit/wagmi，MVP 保持 Ethers）。
+- **路由**: `/` 首页（便签板+小日历）、`/note/:id` 详情、`/profile/:address`、`/mint/:draftId?`。
+- **组件规划**:
+  - `Navbar`：连接钱包、主题切换。
+  - `CalendarWidget`：当月格子、带圆点标记；点击过滤列表。
+  - `NoteBoard`（瀑布流/Grid）：渲染 `NoteCard[]`，支持无限滚动。
+  - `NoteCard`：标题/日期/心情/缩略图；点击进入详情。
+  - `NoteEditorModal`：创建/编辑便条表单（支持图片上传）。
+  - `MintDialog`：显示 Gas 估算与确认。
+  - `Loader`、`Toast`、`Footer`、`Empty`。
+- **状态模型**（Zustand）:
+  - `authStore`: address, chainId, connected。
+  - `noteStore`: notes[], filters, selectedDate, pagination。
+  - `uiStore`: modal/open states, toasts。
+- **主要交互**:
+  1) 连接钱包；
+  2) 打开 `NoteEditorModal` → 选择日期（默认今天）、心情、位置、图片；
+  3) 点击「保存草稿」→ 调用后端 `/notes`；
+  4) 点击「生成并铸造」→ 后端返回 `tokenURI` → 前端调用合约 `mintWithURI`；
+  5) 监听交易完成，刷新列表/日历。
+- **小日历实现**: 使用 `date-fns` 渲染月份；后端 `GET /calendar/events?month=YYYY-MM` 返回有记录的天列表及计数。
+- **PWA/提醒（MVP）**: 注册 Service Worker，允许用户在本机接收到期提醒；或导出 ICS 文件导入本地日历。
+
+---
+
+## 5. 后端方案（`server/` 建议新建，或合并到 `smart_contract` 同级）
+
+- **技术**: Node.js + Express + TypeScript；SQLite（开发）/Postgres（生产，推荐 Neon/Render）。
+- **职责**:
+  - 鉴权：SIWE（Sign-In With Ethereum）挑战签名，颁发 JWT（短期）
+  - 文件上传：接受图片 → 上传到 IPFS（Pinata/web3.storage）→ 返回 CID
+  - 元数据生成：根据草稿生成 JSON → Pin 到 IPFS → 返回 `ipfs://CID`
+  - 便签草稿管理与索引：按地址/日期分页查询
+  - 定时提醒（可选）：`node-cron` + 邮件/Telegram/Web Push
+- **数据模型**（简化）:
+  - `users`: address (pk), created_at
+  - `notes`: id (pk), owner, title, content, date, location, mood, tags(json), image_cid, reminder_at, token_uri, token_id, tx_hash, created_at
+- **REST API 设计**:
+  - `POST /auth/nonce` → 返回随机 nonce
+  - `POST /auth/verify` {address, signature, nonce} → 返回 JWT
+  - `POST /upload/image` (auth) → 返回 `{cid}`
+  - `POST /notes` (auth) → 创建/保存草稿 → `{id}`
+  - `POST /notes/:id/pin` (auth) → 生成 metadata 并 Pin → `{tokenURI, digest}`
+  - `POST /nft/mint` (可选代理) → 返回交易参数或由后端代付（高级）
+  - `GET /notes?owner=&month=` → 列表
+  - `GET /calendar/events?month=` → `{days: [{day: 1, count: 2}, ...]}`
+  - `GET /nft/:tokenId/metadata` → 若用网关/动态元数据时提供
+- **元数据 JSON 示例**:
+```
+{
+  "name": "First Dive - 2025-08-01",
+  "description": "那天我第一次潜水，心情无比激动……",
+  "image": "ipfs://bafy...",
+  "external_url": "https://everyfirst.app/note/123",
+  "attributes": [
+    {"trait_type": "Date", "value": "2025-08-01"},
+    {"trait_type": "Mood", "value": "Excited"},
+    {"trait_type": "Tags", "value": "dive,travel"},
+    {"trait_type": "Location", "value": "Bali"},
+    {"trait_type": "Reminder", "value": "2025-09-01"}
+  ]
+}
+```
+
+---
+
+## 6. 智能合约方案（`smart_contract/`）
+
+- **链**: 开发使用 Base Sepolia 或 Ethereum Sepolia；生产建议 Base/Polygon PoS（低费）。
+- **标准**: OpenZeppelin `ERC721URIStorage` + `Ownable` + `AccessControl`（或 `DefaultAdmin` + `MINTER_ROLE`）。
+- **存储最小化**: 链上只保存 `tokenURI` 与可选 `metadataDigest`（便于校验一致性）。
+- **事件**: `NoteMinted(tokenId, owner, metadataDigest, date)` 便于索引。
+- **函数接口（示意）**:
+```solidity
+contract EveryFirstNote is ERC721URIStorage, AccessControl, Ownable {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    uint256 public nextTokenId;
+    mapping(uint256 => bytes32) public metadataDigest; // keccak256(ipfsCid or metadata json)
+
+    event NoteMinted(uint256 indexed tokenId, address indexed owner, bytes32 digest, uint256 date);
+
+    constructor() ERC721("EveryFirst Note", "EFNOTE") {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MINTER_ROLE, msg.sender);
+    }
+
+    function mintWithURI(address to, string memory uri, bytes32 digest, uint256 date)
+        external onlyRole(MINTER_ROLE) returns (uint256)
+    {
+        uint256 tokenId = ++nextTokenId;
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+        metadataDigest[tokenId] = digest;
+        emit NoteMinted(tokenId, to, digest, date);
+        return tokenId;
+    }
+}
+```
+- **可选：懒铸造（Lazy Mint）**: 后端生成 `Voucher`（EIP-712 签名）→ 前端把凭证提交给合约 `redeem(voucher)`，由用户支付 Gas；减少 MINTER 权限暴露。
+- **测试**: Hardhat + Chai → 用例覆盖权限、铸造、URI 设置、事件。
+
+---
+
+## 7. 目录与集成
+
+建议保留现结构并新增后端目录：
+
+```
+firstdapp/
+  ├─ front/                 # React + Vite + TS
+  ├─ smart_contract/        # Hardhat/Foundry（此处建议 Hardhat）
+  └─ server/                # Express + TS（新增）
+```
+
+前端 `.env`：`VITE_CONTRACT_ADDRESS`、`VITE_RPC_URL`、`VITE_BACKEND_URL`。
+后端 `.env`：`DATABASE_URL`、`PINATA_JWT`/`WEB3_STORAGE_TOKEN`、`JWT_SECRET`、`CHAIN_ID`。
+
+---
+
+
+
+
+
+## 8. 关键实现清单（可直接开工）
+
+- 合约：在 `smart_contract/` 使用 Hardhat
+  - 安装：`npm i -D hardhat @nomicfoundation/hardhat-toolbox @openzeppelin/contracts`
+  - 任务：`deploy.ts`、`.env`（RPC/PK）
+
+- 后端：在项目根新增 `server/`
+  - 依赖：`express cors multer axios zod jsonwebtoken better-sqlite3` 或 `pg`
+  - IPFS：`pinata-sdk` 或 `web3.storage`
+  - 路由：见第 5 节 API
+
+- 前端：在 `front/`
+  - 依赖：`axios zustand date-fns`
+  - 合约交互：Ethers.js `new Contract(address, abi, signer)` 调 `mintWithURI`
+  - 组件：`CalendarWidget`、`NoteBoard`、`NoteEditorModal`
+
+---
+
+## 9. 验收标准（MVP）
+
+- 首页可创建便条，图片可上传并显示缩略图。
+- 小日历能标记当月有记录的日期，点击可过滤。
+- 点击「生成并铸造」后，能在测试网成功铸造 NFT，`tokenURI` 可在区块浏览器查看并解析到 IPFS 元数据。
+- 个人页能看到我铸造的所有便签 NFT。
+
+
+
+
