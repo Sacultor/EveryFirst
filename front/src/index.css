@@ -33,12 +33,43 @@ body {
 	height: 240px;
 	margin-bottom: 16px;
 }
+@keyframes pixelFlicker {
+  0%, 100% { opacity: 1; }
+  25% { opacity: 0.9; }
+  50% { opacity: 0.95; }
+  75% { opacity: 0.85; }
+}
+
+@keyframes breathingGradient {
+  0%, 100% {
+    background-position: 0% 50%;
+    background-size: 200% 200%;
+  }
+  50% {
+    background-position: 100% 50%;
+    background-size: 200% 200%;
+  }
+}
+
 .pixel-logo {
-	font-family: 'Press Start 2P', system-ui, -apple-system, sans-serif;
-	letter-spacing: 2px;
-	color: var(--primary-600);
-	text-shadow: 2px 2px 0 rgba(0,0,0,0.08), 4px 4px 0 rgba(255,122,162,0.25);
-	font-size: 28px;
+  font-family: 'Press Start 2P', system-ui, -apple-system, sans-serif;
+  letter-spacing: 3px;
+  font-size: 36px;
+  font-weight: bold;
+  text-transform: uppercase;
+  background: linear-gradient(45deg, #ff7aa2, #ff4f88, #ff7aa2);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -moz-background-clip: text;
+  -moz-text-fill-color: transparent;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.1), 4px 4px 0 rgba(255,122,162,0.2);
+  animation: 
+    pixelFlicker 4s ease-in-out infinite,
+    breathingGradient 8s ease infinite;
+  position: relative;
+  display: inline-block;
+  padding: 0 8px;
 }
 
 .layout {
