@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNotes } from "../../stores/notes";
+import ImageUploader from "./ImageUploader";
 
 type Props = { onClose: () => void }
 
@@ -10,6 +11,7 @@ const NoteEditorModal = ({ onClose }: Props) => {
 	const [content, setContent] = useState("");
 	const [mood, setMood] = useState("");
 	const [location, setLocation] = useState("");
+	const [images, setImages] = useState<string[]>([]);
 
 	function save() {
 		if (!title.trim()) return;
@@ -19,6 +21,7 @@ const NoteEditorModal = ({ onClose }: Props) => {
 			date: new Date(date).toISOString(),
 			mood,
 			location,
+			images: images.length > 0 ? images : undefined,
 		});
 		onClose();
 	}
@@ -40,6 +43,10 @@ const NoteEditorModal = ({ onClose }: Props) => {
 				<div className="form-row">
 					<textarea className="textarea" placeholder="写点什么吧..." value={content} onChange={e => setContent(e.target.value)} />
 				</div>
+				<ImageUploader 
+					onImagesChange={setImages}
+					initialImages={images}
+				/>
 				<div className="modal-actions">
 					<button className="btn secondary" onClick={onClose}>取消</button>
 					<button className="btn" onClick={save}>保存</button>

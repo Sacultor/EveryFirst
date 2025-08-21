@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useNotes } from "../../stores/notes.tsx";
 import type { Note } from "../../stores/notes.tsx";
+import { FiImage } from "react-icons/fi";
 
 type Props = {
 	onAdd?: () => void
@@ -41,6 +42,20 @@ const NoteBoard = ({ onAdd }: Props) => {
 						)}
 						<div className="note-date">{new Date(note.date).toLocaleDateString()}</div>
 						<h3 className="note-title">{note.title}</h3>
+						{note.images && note.images.length > 0 && (
+							<div className="note-images">
+								{note.images.slice(0, 2).map((img, idx) => (
+									<div key={idx} className="note-image-container">
+										<img src={img} alt={`附件 ${idx + 1}`} className="note-image" />
+									</div>
+								))}
+								{note.images.length > 2 && (
+									<div className="image-counter">
+										<FiImage /> +{note.images.length - 2}
+									</div>
+								)}
+							</div>
+						)}
 						<p className="note-content">{note.content}</p>
 					</div>
 				))}

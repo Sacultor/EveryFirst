@@ -3,7 +3,7 @@ import { Navbar, Footer, NoteBoard, CalendarWidget, NoteEditorModal } from "./co
 import styles from "./styles/PixelLogo.module.css";
 import "./App.css";
 
-const App = () => {
+const dApp = () => {
   const [editorOpen, setEditorOpen] = useState(false);
 
   return (
@@ -137,4 +137,13 @@ const PixelLogo = ({ text }: { text: string }) => {
   );
 };
 
-export default App;
+function App() {
+  return (
+    <div className="app">
+      {/* 仅添加这一行，放在最顶层 */}
+    
+    </div>
+  );
+}
+
+export default dApp;

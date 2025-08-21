@@ -8,6 +8,7 @@ export type Note = {
 	date: string; // ISO string
 	mood?: string;
 	location?: string;
+	images?: string[]; // Array of image URLs or base64 strings
 };
 
 type NotesCtx = {
