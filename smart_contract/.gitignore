@@ -1,0 +1,41 @@
+# ----------- Node / npm -----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ----------- Hardhat -----------
+artifacts/
+cache/
+coverage/
+coverage.json
+typechain/
+typechain-types/
+
+# ----------- Foundry -----------
+out/
+cache_forge/
+
+# ----------- IDE -----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ----------- OS -----------
+.DS_Store
+Thumbs.db
+
+# ----------- Misc -----------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ----------- Logs -----------
+logs/
+*.log
