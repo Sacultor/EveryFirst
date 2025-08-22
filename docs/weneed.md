@@ -1,5 +1,6 @@
 ## EveryFirst — 合约与前端/后端交互实施方案
 
+
 下面的文档给出合约实现位置、合约逻辑概要、前端与后端之间的交互契约（API）、事件与数据格式示例，以及关键边界/安全注意点，目标是让开发者可以立刻开始实现并联调。
 
 ---
@@ -205,9 +206,3 @@ contract.on('NoteMinted', (tokenId, owner, digest, date, event) => {
 
 ---
 
-如果你希望，我可以：
-- 生成 `EveryFirstNote.sol` 的完整 Solidity 源码样板并添加到 `smart_contract/contracts/`。
-- 在 `front/` 添加 `contract.tsx` 的 Ethers 封装样板。
-- 在 `server/` 搭建最小 Express + pin 到 web3.storage 的实现样例。
-
-请告诉我接下来优先要我完成哪一项（合约源码 / 前端封装 / 后端 pin 示例 / 或全部）。
