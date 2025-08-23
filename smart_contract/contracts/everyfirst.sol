@@ -1,92 +1,65 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-//主和约部分
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+// EveryFirst NFT 合约（修正版）
+// - 使用 ERC721URIStorage 存储 tokenURI
+// - 使用 AccessControl 提供 MINTER_ROLE
+// - 链上仅存储 tokenURI 与 metadata digest
+
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+contract EveryFirst is ERC721URIStorage, AccessControl, Ownable {
+    uint256 private _nextTokenId = 1;
 
-contract EveryFirst is ERC721, Ownable {
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIdCounter;
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    // 元数据结构
-    struct FirstTimeMemory {
-        uint256 timestamp;
-        string title;
-        string description;
-        string location;
-        string mood;
-        string[] tags;
-        string imageCID;
-    }
-
-    // 存储元数据摘要
+    // 存储元数据摘要 (keccak256 of metadata JSON or CID)
     mapping(uint256 => bytes32) private _metadataDigests;
 
     // 事件
-    event MemoryMinted(
-        address indexed owner,
-        uint256 indexed tokenId,
-        string tokenURI,
-        bytes32 metadataDigest
-    );
+    event NoteMinted(uint256 indexed tokenId, address indexed owner, bytes32 digest, uint256 date);
 
-    constructor() ERC721("EveryFirst", "EFIRST") Ownable(msg.sender) {}
+    constructor() ERC721("EveryFirst", "EFIRST") Ownable(msg.sender) {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MINTER_ROLE, msg.sender);
+    }
 
-    // 铸造新的记忆NFT
-    function mintMemory(
+    /// @notice 铸造新的 NFT，受 MINTER_ROLE 控制
+    /// @param to 接收地址
+    /// @param uri tokenURI 的 CID 或路径（不包含 base）
+    /// @param digest keccak256(metadataJSON)
+    /// @param date 便签日期（unix timestamp 或 YYYYMMDD 格式）
+    function mintWithURI(
         address to,
-        string memory tokenURI,
-        bytes32 metadataDigest
-    ) public returns (uint256) {
-        uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        
+        string calldata uri,
+        bytes32 digest,
+        uint256 date
+    ) external onlyRole(MINTER_ROLE) returns (uint256) {
+    uint256 tokenId = _nextTokenId;
+    _nextTokenId++;
+
         _safeMint(to, tokenId);
-        _setTokenURI(tokenId, tokenURI);
-        _metadataDigests[tokenId] = metadataDigest;
-        
-        emit MemoryMinted(to, tokenId, tokenURI, metadataDigest);
+        _setTokenURI(tokenId, uri);
+        _metadataDigests[tokenId] = digest;
+
+        emit NoteMinted(tokenId, to, digest, date);
         return tokenId;
     }
 
-    // 获取元数据摘要
     function getMetadataDigest(uint256 tokenId) public view returns (bytes32) {
-        require(_exists(tokenId), "Token does not exist");
         return _metadataDigests[tokenId];
     }
 
-    // 重写基础URI
     function _baseURI() internal pure override returns (string memory) {
         return "ipfs://";
     }
 
-    // 设置tokenURI（内部）
-    function _setTokenURI(uint256 tokenId, string memory _tokenURI) internal {
-        require(_exists(tokenId), "ERC721Metadata: URI set of nonexistent token");
-        _tokenURIs[tokenId] = _tokenURI;
-    }
-
-    // 获取tokenURI
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        _requireMinted(tokenId);
-        string memory _tokenURI = _tokenURIs[tokenId];
-        string memory base = _baseURI();
-        
-        if (bytes(base).length == 0) {
-            return _tokenURI;
-        }
-        if (bytes(_tokenURI).length > 0) {
-            return string(abi.encodePacked(base, _tokenURI));
-        }
-        return super.tokenURI(tokenId);
-    }
-
-    // 支持接口
+    // supportsInterface 需要同时覆盖 AccessControl 与 ERC721 的实现
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721)
+        override(ERC721URIStorage, AccessControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
