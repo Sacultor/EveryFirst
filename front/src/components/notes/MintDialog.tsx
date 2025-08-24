@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { estimateGasMint, mintWithURI, onNoteMinted, offNoteMinted } from '../../services/contract';
+import { estimateGasMint, mintWithURI, onNoteMinted, offNoteMinted, loadAbi } from '../../services/contract';
 
 type Props = {
   open: boolean;
@@ -23,6 +23,15 @@ const MintDialog = ({ open, onClose, tokenURI, digest, date, to, onMinted }: Pro
     setError(null);
     setTxHash(null);
     setBusy(false);
+
+    // 初始化时加载 ABI
+    (async () => {
+      try {
+        await loadAbi();
+      } catch (e) {
+        console.error('Failed to load contract ABI:', e);
+      }
+    })();
 
     const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '';
     // If contract address is missing, set an informational notice but continue — mintWithURI will use mock path.
@@ -55,17 +64,25 @@ const MintDialog = ({ open, onClose, tokenURI, digest, date, to, onMinted }: Pro
     } catch (e) {
       // contract not available — register global fallback
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { __registerOnNoteMinted } = require('../../services/contract');
-        __registerOnNoteMinted(handler);
-        registeredGlobal = true;
+        // 使用动态 import 替代 require
+        (async () => {
+          const contractModule = await import('../../services/contract');
+          contractModule.__registerOnNoteMinted(handler);
+          registeredGlobal = true;
+        })();
       } catch (e) {}
     }
 
     return () => {
       try { offNoteMinted(); } catch (e) {}
       if (registeredGlobal) {
-        try { const { __unregisterOnNoteMinted } = require('../../services/contract'); __unregisterOnNoteMinted(); } catch (e) {}
+        try {
+          // 使用动态 import 替代 require
+          (async () => {
+            const contractModule = await import('../../services/contract');
+            contractModule.__unregisterOnNoteMinted();
+          })();
+        } catch (e) {}
       }
     };
   }, [open]);
@@ -80,7 +97,8 @@ const MintDialog = ({ open, onClose, tokenURI, digest, date, to, onMinted }: Pro
     }
   // allow mint even if CONTRACT_ADDRESS missing (will use mock behavior)
     try {
-      const tx = await mintWithURI(to, tokenURI.replace('ipfs://', ''), digest, Date.parse(date) || 0);
+      // 修改后的代码 - 保留完整的 IPFS URI
+      const tx = await mintWithURI(to, tokenURI, digest, Date.parse(date) || 0);
       setTxHash(tx.hash || tx.transactionHash || null);
       await tx.wait();
       if (onMinted) onMinted(1, tx.hash || tx.transactionHash || '');

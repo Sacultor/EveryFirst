@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { FiUpload, FiX } from 'react-icons/fi';
 
 interface ImageUploaderProps {
@@ -10,6 +10,11 @@ interface ImageUploaderProps {
 const ImageUploader = ({ onImagesChange, maxImages = 3, initialImages = [] }: ImageUploaderProps) => {
   const [images, setImages] = useState<string[]>(initialImages);
   const [isDragging, setIsDragging] = useState(false);
+
+  // 当images状态变化时通知父组件
+  useEffect(() => {
+    onImagesChange(images);
+  }, [images, onImagesChange]);
 
   // compress single file to be under maxSizeBytes (target 2MB)
   async function compressFileToDataUrl(file: File, maxSizeBytes = 2 * 1024 * 1024): Promise<string> {
@@ -78,37 +83,37 @@ const ImageUploader = ({ onImagesChange, maxImages = 3, initialImages = [] }: Im
 
   const handleFileChange = useCallback(async (files: FileList | null) => {
     if (!files) return;
-    const fileArray = Array.from(files).slice(0, maxImages);
+    
+    const fileArray = Array.from(files).filter(file => file.type.startsWith('image/'));
     if (fileArray.length === 0) return;
 
-    const added: string[] = [];
-    for (const file of fileArray) {
-      if (!file.type.startsWith('image/')) continue;
-      try {
-        const dataUrl = await compressFileToDataUrl(file, 2 * 1024 * 1024);
-        added.push(dataUrl);
-      } catch (e) {
-        // fallback to original if compression fails
-        const reader = await new Promise<string>((resolve) => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result as string);
-          r.readAsDataURL(file);
-        });
-        added.push(reader as string);
-      }
-      // stop if reached maxImages
-      // note: images state may have changed; use functional update below
-      const currentCount = images.length + added.length;
-      if (currentCount >= maxImages) break;
-    }
+    try {
+      const processFiles = async () => {
+        const results = await Promise.all(
+          fileArray.map(file => compressFileToDataUrl(file, 2 * 1024 * 1024).catch(() => {
+            // 如果压缩失败，回退到原始文件
+            return new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.readAsDataURL(file);
+            });
+          }))
+        );
 
-    if (added.length === 0) return;
-    setImages(prev => {
-      const updated = [...prev, ...added].slice(0, maxImages);
-      onImagesChange(updated);
-      return updated;
-    });
-  }, [maxImages, onImagesChange, images]);
+        setImages(prev => {
+          const available = maxImages - prev.length;
+          if (available <= 0) return prev;
+
+          const newImages = [...prev, ...results].slice(0, maxImages);
+          return newImages;
+        });
+      };
+
+      processFiles();
+    } catch (error) {
+      console.error('处理图片时出错:', error);
+    }
+  }, [maxImages]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -137,7 +142,6 @@ const ImageUploader = ({ onImagesChange, maxImages = 3, initialImages = [] }: Im
     const newImages = [...images];
     newImages.splice(index, 1);
     setImages(newImages);
-    onImagesChange(newImages);
   };
 
   return (
