@@ -187,3 +187,19 @@ export function __registerOnNoteMinted(callback: (tokenId: number, owner: string
 export function __unregisterOnNoteMinted() {
   delete (window as any).__everyfirst_onNoteMinted;
 }
+
+// 为演示目的：请求 MINTER_ROLE 权限
+export async function requestMinterRole() {
+  try {
+    const signerLocal = await getSigner();
+    const c = await getContract(signerLocal);
+    const tx = await c.requestMinterRole();
+    console.log('请求 MINTER_ROLE 权限的交易已发送:', tx);
+    await tx.wait();
+    console.log('已成功获取 MINTER_ROLE 权限');
+    return tx;
+  } catch (error: any) {
+    console.error('请求 MINTER_ROLE 权限失败:', error);
+    throw new Error(`请求铸造权限失败: ${error.message}`);
+  }
+}

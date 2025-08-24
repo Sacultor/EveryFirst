@@ -97,6 +97,10 @@ const MintDialog = ({ open, onClose, tokenURI, digest, date, to, onMinted }: Pro
     }
   // allow mint even if CONTRACT_ADDRESS missing (will use mock behavior)
     try {
+      // 检查必要参数
+      if (!to) {
+        throw new Error('接收地址不能为空');
+      }
       // 修改后的代码 - 保留完整的 IPFS URI
       const tx = await mintWithURI(to, tokenURI, digest, Date.parse(date) || 0);
       setTxHash(tx.hash || tx.transactionHash || null);

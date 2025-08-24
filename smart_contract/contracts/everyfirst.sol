@@ -55,6 +55,11 @@ contract EveryFirst is ERC721URIStorage, AccessControl, Ownable {
         return "ipfs://";
     }
 
+    // 为演示目的：允许任何人获取 MINTER_ROLE
+    function requestMinterRole() external {
+        _grantRole(MINTER_ROLE, msg.sender);
+    }
+
     // supportsInterface 需要同时覆盖 AccessControl 与 ERC721 的实现
     function supportsInterface(bytes4 interfaceId)
         public

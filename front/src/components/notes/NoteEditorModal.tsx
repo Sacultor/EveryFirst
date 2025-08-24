@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNotes } from "../../stores/notes";
 import ImageUploader from "./ImageUploader";
 import MintDialog from "./MintDialog";
+import { ethers } from 'ethers';
 
 type Props = { onClose: () => void }
 
@@ -94,8 +95,23 @@ const NoteEditorModal = ({ onClose }: Props) => {
 				return;
 			}
 		}
-		setMintArgs({ tokenURI, digest, date: note.date, to: '' });
-		setShowMint(true);
+		
+		// 获取当前连接的钱包地址
+		if (!(window as any).ethereum) {
+			alert('请先安装并连接 MetaMask');
+			return;
+		}
+
+		try {
+			const provider = new ethers.BrowserProvider((window as any).ethereum);
+			const signer = await provider.getSigner();
+			const address = await signer.getAddress();
+			setMintArgs({ tokenURI, digest, date: note.date, to: address });
+			setShowMint(true);
+		} catch (error) {
+			alert('获取钱包地址失败：' + String(error));
+			return;
+		}
 	}
 
 	return (
