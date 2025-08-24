@@ -40,6 +40,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 		setNotes((prev) => [newNote, ...prev]);
 		setSelectedNoteId(id);
 		setSelectedDate(new Date(input.date));
+		return id;
 	}
 
 	const value: NotesCtx = useMemo(

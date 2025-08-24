@@ -11,27 +11,104 @@ const ImageUploader = ({ onImagesChange, maxImages = 3, initialImages = [] }: Im
   const [images, setImages] = useState<string[]>(initialImages);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileChange = useCallback((files: FileList | null) => {
+  // compress single file to be under maxSizeBytes (target 2MB)
+  async function compressFileToDataUrl(file: File, maxSizeBytes = 2 * 1024 * 1024): Promise<string> {
+    // load image
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+      image.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+      image.src = url;
+    });
+
+    // create canvas
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas not supported');
+
+    // initial size: keep original but constrain max dimension
+    const MAX_DIM = 1920;
+    let { width, height } = img;
+    if (width > MAX_DIM || height > MAX_DIM) {
+      const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    ctx.drawImage(img, 0, 0, width, height);
+
+    // try decreasing quality and size until under maxSizeBytes
+    let quality = 0.92;
+    let blob: Blob | null = null;
+    const mime = file.type === 'image/png' ? 'image/jpeg' : file.type || 'image/jpeg';
+
+    // helper to get blob
+    const canvasToBlob = (q: number) => new Promise<Blob | null>(res => canvas.toBlob(b => res(b), mime, q));
+
+    for (let pass = 0; pass < 8; pass++) {
+      blob = await canvasToBlob(quality);
+      if (!blob) break;
+      if (blob.size <= maxSizeBytes) break;
+      // reduce quality
+      quality = Math.max(0.35, quality - 0.12);
+      // if quality already low and still too big, scale down dimensions
+      if (quality <= 0.4) {
+        width = Math.round(width * 0.85);
+        height = Math.round(height * 0.85);
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+      }
+    }
+
+    if (!blob) throw new Error('Failed to compress image');
+
+    // convert blob to dataURL
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read blob'));
+      reader.readAsDataURL(blob as Blob);
+    });
+    return dataUrl;
+  }
+
+  const handleFileChange = useCallback(async (files: FileList | null) => {
     if (!files) return;
-    
-    const newImages: string[] = [];
-    const fileArray = Array.from(files).slice(0, maxImages - images.length);
-    
+    const fileArray = Array.from(files).slice(0, maxImages);
     if (fileArray.length === 0) return;
 
-    fileArray.forEach(file => {
-      if (!file.type.startsWith('image/')) return;
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        const updatedImages = [...images, result];
-        setImages(updatedImages);
-        onImagesChange(updatedImages);
-      };
-      reader.readAsDataURL(file);
+    const added: string[] = [];
+    for (const file of fileArray) {
+      if (!file.type.startsWith('image/')) continue;
+      try {
+        const dataUrl = await compressFileToDataUrl(file, 2 * 1024 * 1024);
+        added.push(dataUrl);
+      } catch (e) {
+        // fallback to original if compression fails
+        const reader = await new Promise<string>((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result as string);
+          r.readAsDataURL(file);
+        });
+        added.push(reader as string);
+      }
+      // stop if reached maxImages
+      // note: images state may have changed; use functional update below
+      const currentCount = images.length + added.length;
+      if (currentCount >= maxImages) break;
+    }
+
+    if (added.length === 0) return;
+    setImages(prev => {
+      const updated = [...prev, ...added].slice(0, maxImages);
+      onImagesChange(updated);
+      return updated;
     });
-  }, [images, maxImages, onImagesChange]);
+  }, [maxImages, onImagesChange, images]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();

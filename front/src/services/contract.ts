@@ -54,6 +54,29 @@ export async function estimateGasMint(to: string, tokenURI: string, digest: stri
 }
 
 export async function mintWithURI(to: string, tokenURI: string, digest: string, date: number) {
+  // If no contract address configured, return a mock tx and emit NoteMinted locally
+  if (!CONTRACT_ADDRESS) {
+    const mockHash = '0x' + Math.floor(Math.random() * 1e16).toString(16).padStart(64, '0');
+    // simulate ethers transaction-like object
+    const tx = {
+      hash: mockHash,
+      wait: async () => ({ status: 1, transactionHash: mockHash }),
+    } as any;
+    // trigger fake NoteMinted event after a short delay
+    setTimeout(() => {
+      // prefer calling global registered handler for mock events
+      if ((window as any).__everyfirst_onNoteMinted) {
+        (window as any).__everyfirst_onNoteMinted(1, to, digest, date);
+      } else {
+        // as a last resort, try to emit on contract if available
+        try {
+          const c = getContract();
+          if (c && c.emit) c.emit('NoteMinted', 1, to, digest, date);
+        } catch (e) {}
+      }
+    }, 500);
+    return tx;
+  }
   const signerLocal = await getSigner();
   const c = getContract(signerLocal);
   const tx = await c.mintWithURI(to, tokenURI, digest, date);
@@ -72,4 +95,13 @@ export function offNoteMinted() {
   const c = getContract();
   if (!c) return;
   c.removeAllListeners('NoteMinted');
+}
+
+// provide a fallback global registration when contract not available
+export function __registerOnNoteMinted(callback: (tokenId: number, owner: string, digest: string, date: number) => void) {
+  (window as any).__everyfirst_onNoteMinted = callback;
+}
+
+export function __unregisterOnNoteMinted() {
+  delete (window as any).__everyfirst_onNoteMinted;
 }

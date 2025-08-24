@@ -7,7 +7,9 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+// allow larger payloads (images as base64 in JSON) — set to 10mb, adjust if needed
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 // in-memory store for notes
 const notes = new Map();
